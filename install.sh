@@ -63,6 +63,8 @@ uci set zapret2.secondlife_tls.script='--payload=tls_client_hello
 --lua-desync=hostfakesplit:host=google.com:tcp_ts=-600000'
 
 # 2. UDP desync для игрового протокола Linden UDP Circuit (симуляторы)
+uci set zapret2.blob_quic_initial_www_google_com=blob
+uci set zapret2.blob_quic_initial_www_google_com.path='/opt/zapret2/files/fake/quic_initial_www_google_com.bin'
 uci set zapret2.blob_quic_initial_www_google_com.enabled='1'
 uci set zapret2.secondlife_udp=strategy
 uci set zapret2.secondlife_udp.enabled='1'
@@ -71,7 +73,7 @@ uci add_list zapret2.secondlife_udp.filter_l3='ipv4'
 uci add_list zapret2.secondlife_udp.protocol='udp'
 uci set zapret2.secondlife_udp.script='--out-range=<n4
 --payload=known,unknown
---lua-desync=fake:blob=blob_quic_initial_www_google_com:badsum:ip_ttl=3:repeats=2:payload=known,unknown'
+--lua-desync=fake:blob=blob_quic_initial_www_google_com:ip_ttl=7:repeats=5:payload=known,unknown'
 
 # Исключаем Second Life из общей стратегии V_circular
 if uci -q get zapret2.V_circular >/dev/null; then
@@ -84,11 +86,16 @@ if uci -q get zapret2.games_udp >/dev/null; then
     uci set zapret2.games_udp.port='88,1024-2407,2409-4499,4502-12034,12037-12999,13051-19293,19345-49999,50101-65535'
 fi
 
-# Не перехватывать входящий UDP до DNAT (защита conntrack и сокетов)
-uci set zapret2.main.nfqws_udp_pkt_in='0'
+# Перехват TCP портов в nfqws (включая порты 12043/12046 для capabilities симуляторов)
+uci set zapret2.main.nfqws_ports_tcp='80,443,853,1024-65535'
 
-# Перехват исходящих портов в nfqws
+# Перехват исходящих портов UDP в nfqws
 uci set zapret2.main.nfqws_ports_udp='53,80,88,443,1024-65535'
+
+# Лимиты пакетов для desync и отключение входящего UDP
+uci set zapret2.main.nfqws_tcp_pkt_out='25'
+uci set zapret2.main.nfqws_udp_pkt_out='5'
+uci set zapret2.main.nfqws_udp_pkt_in='0'
 
 uci commit zapret2
 
@@ -102,8 +109,10 @@ echo -e "${GREEN}[4/5] Настройка прямого DNS (защита от 
 for dom in secondlife.com lindenlab.com secondlife.io secondlifegrid.net akamaized.net vivox.com; do
     uci -q del_list dhcp.@dnsmasq[0].server="/$dom/1.1.1.1" || true
     uci -q del_list dhcp.@dnsmasq[0].server="/$dom/8.8.8.8" || true
+    uci -q del_list dhcp.@dnsmasq[0].server="/$dom/9.9.9.9" || true
     uci add_list dhcp.@dnsmasq[0].server="/$dom/1.1.1.1"
     uci add_list dhcp.@dnsmasq[0].server="/$dom/8.8.8.8"
+    uci add_list dhcp.@dnsmasq[0].server="/$dom/9.9.9.9"
 done
 uci commit dhcp
 

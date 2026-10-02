@@ -30,6 +30,7 @@ rm -f /opt/zapret2/ipset/zapret_hosts_secondlife.txt
 for dom in secondlife.com lindenlab.com secondlife.io secondlifegrid.net akamaized.net vivox.com; do
     uci -q del_list dhcp.@dnsmasq[0].server="/$dom/1.1.1.1" || true
     uci -q del_list dhcp.@dnsmasq[0].server="/$dom/8.8.8.8" || true
+    uci -q del_list dhcp.@dnsmasq[0].server="/$dom/9.9.9.9" || true
 done
 uci commit dhcp
 
